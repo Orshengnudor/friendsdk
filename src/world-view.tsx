@@ -40,6 +40,31 @@ export function GameWorld({ friendId, world, spawn, interactions, paused = false
   }, []);
   useEffect(() => { if (paused) mover.current?.stop(); }, [paused]);
   useEffect(() => {
+    if (paused || status) return;
+    const grab = () => canvas.current?.focus({ preventScroll: true });
+    grab();
+    const id = requestAnimationFrame(grab);
+    return () => cancelAnimationFrame(id);
+  }, [paused, status]);
+  useEffect(() => {
+    const typing = (event: Event) => {
+      const node = event.target as HTMLElement | null;
+      return Boolean(node && (node.tagName === "INPUT" || node.tagName === "TEXTAREA" || node.tagName === "SELECT" || node.isContentEditable));
+    };
+    const onDown = (event: KeyboardEvent) => {
+      if (live.current.paused || typing(event)) return;
+      if (event.key.toLowerCase() === "e" && !event.repeat && mover.current) {
+        const target = nearest(mover.current.state.position);
+        if (target) { event.preventDefault(); live.current.onInteract(target); }
+      }
+      if (mover.current?.setKey(event.key, true)) event.preventDefault();
+    };
+    const onUp = (event: KeyboardEvent) => { if (mover.current?.setKey(event.key, false)) event.preventDefault(); };
+    window.addEventListener("keydown", onDown);
+    window.addEventListener("keyup", onUp);
+    return () => { window.removeEventListener("keydown", onDown); window.removeEventListener("keyup", onUp); };
+  }, []);
+  useEffect(() => {
     const node = canvas.current, context = node?.getContext("2d");
     if (!node || !context) { setFailed(true); setStatus("This browser cannot render the world."); return; }
     const abort = new AbortController(), movement = createWorldMovement(world, spawn);
@@ -82,16 +107,6 @@ export function GameWorld({ friendId, world, spawn, interactions, paused = false
     <div className="rf-world-surface" style={size}>
       <canvas ref={canvas} width={960} height={640} tabIndex={paused || status ? -1 : 0}
         aria-label="Playable world. Arrow keys or WASD to walk. Tap a destination. Press E near an activity."
-        onBlur={() => mover.current?.stop()}
-        onKeyDown={event => {
-          if (paused || status) return;
-          if (event.key.toLowerCase() === "e" && !event.repeat && mover.current) {
-            const target = nearest(mover.current.state.position);
-            if (target) { event.preventDefault(); onInteract(target); }
-          }
-          if (mover.current?.setKey(event.key, true)) event.preventDefault();
-        }}
-        onKeyUp={event => { if (mover.current?.setKey(event.key, false)) event.preventDefault(); }}
         onPointerDown={event => {
           if (paused || status) return;
           event.currentTarget.focus(); const rect = event.currentTarget.getBoundingClientRect();

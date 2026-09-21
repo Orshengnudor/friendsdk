@@ -1,0 +1,5 @@
+Rare Friends Hunt
+=================
+
+Economy, 30 worlds, xRF coupons, 40% off tier upgrades.
+Full tables: games/hunt/README.md

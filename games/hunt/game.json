@@ -1,0 +1,14 @@
+{
+  "name": "Rare Friends: Hunt",
+  "consumable": "Attempt",
+  "price": "1000000000000000000",
+  "outcomes": [
+    { "name": "Nothing", "chanceBps": 1000, "reward": "0" },
+    { "name": "Field Mouse", "chanceBps": 1500, "reward": "500000000000000000" },
+    { "name": "Wild Hare", "chanceBps": 1500, "reward": "1000000000000000000" },
+    { "name": "Timber Wolf", "chanceBps": 800, "reward": "1500000000000000000" },
+    { "name": "River Pike", "chanceBps": 3000, "reward": "2000000000000000000" },
+    { "name": "Stone Boar", "chanceBps": 2000, "reward": "4000000000000000000" },
+    { "name": "Ancient Wyrm", "chanceBps": 200, "reward": "8000000000000000000" }
+  ]
+}

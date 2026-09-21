@@ -52,7 +52,7 @@ export function GameFrame({ children, friends, selectedFriendId, onSelectFriend,
   const selecting = selectionMode === "picker" && (!friend || menu === "friends");
   const menuOpen = selecting || menu === "wallet" || Boolean(confirmation);
   useEffect(() => { onMenuChange?.(menuOpen); }, [menuOpen, onMenuChange]);
-  return <section className="rf-game-frame" aria-label="Game container" data-mode={mode} style={{ aspectRatio: `${GAME_VIEWPORT.width} / ${GAME_VIEWPORT.height}` }}>
+  return <section className="rf-game-frame" aria-label="Game container" data-mode={mode}>
     <div className="rf-frame-chrome" inert={menuOpen || undefined}>
       <div className="rf-frame-toolbar">
         <span className="rf-frame-mode">{mode === "preview" ? "Local preview" : "Live · Robinhood"}</span>

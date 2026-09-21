@@ -1,0 +1,6 @@
+{
+  "buildCommand": "npm run build && npx friendsdk build games/hunt",
+  "outputDirectory": "games/hunt/.friendsdk",
+  "installCommand": "npm ci",
+  "framework": null
+}

@@ -181,7 +181,7 @@ function EligibilityGate({ definition, picker, friend, account, chainId, publicC
   const ledgerKey = `${chainId}:${friend.id}:${checked.walletAddress!.toLowerCase()}`;
   let client = ledgers.get(ledgerKey);
   if (!client) {
-    client = createGamePreview(definition, { friendId: friend.id, stake: maximumPrize(definition) * 10n, rfBalance: 20n * RF }).client;
+    client = createGamePreview(definition, { friendId: friend.id, stake: maximumPrize(definition) * 10n, rfBalance: 1000n * RF }).client;
     ledgers.set(ledgerKey, client);
   }
   // Remount both the bridge and child on any identity/network/URL change.
@@ -330,7 +330,13 @@ function EmbeddedSession({ friend, client, definition, live, frameUrl, picker }:
     };
   }, [client, definition, friend.id, attempt]);
 
+  useEffect(() => {
+    if (confirmation) return;
+    const id = window.setTimeout(() => iframe.current?.focus(), 40);
+    return () => window.clearTimeout(id);
+  }, [confirmation, status]);
   async function topUp() {
+
     if (fundingRef.current || actionPending.current || !liveRef.current) return;
     fundingRef.current = true; setFunding(true); setFundMessage("");
     bridge.current?.setPaused(true);
@@ -359,7 +365,7 @@ function EmbeddedSession({ friend, client, definition, live, frameUrl, picker }:
       {fundMessage && <p role="status">{fundMessage}</p>}
     </div> : undefined}
     confirmation={confirmation} onMenuChange={onMenuChange} {...picker}>
-    <iframe key={attempt} ref={iframe} src={frameUrl} title={definition.name} sandbox="allow-scripts" referrerPolicy="no-referrer" />
+    <iframe key={attempt} ref={iframe} src={frameUrl} title={definition.name} sandbox="allow-scripts" referrerPolicy="no-referrer" tabIndex={0} />
     {status !== "ready" && <div className="rf-runtime-status" role={status === "error" ? "alert" : "status"}>
       <p>{status === "loading" ? live ? "Loading live game…" : "Loading game preview…" : sessionError || "The game could not connect. Check the frame URL and its asset permissions."}</p>
       {status === "error" && <button type="button" onClick={() => setAttempt(value => value + 1)}>Retry game</button>}
