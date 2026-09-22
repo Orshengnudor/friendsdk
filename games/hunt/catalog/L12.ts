@@ -11,7 +11,7 @@ export const L12: HuntLevelDef = {
     title: "Live dish",
     brief: "Four dishes across the hexes. One is receiving. Warmth marks the beam.",
     nodeLabels: ["Port dish", "Solar dish", "Spare dish", "Aft dish"],
-    timerMs: null,
+    timerMs: 15000,
     failOnWrong: false,
     hint: "hotcold",
     relic: false,

@@ -10,11 +10,11 @@ Protocol numbers: [Generations docs](https://rarefriends.com/docs/generations). 
 
 You already pay RF to climb Gen 6 T0 → Gen 1 T4. Hunt is that climb, with a session in between:
 
-1. Complete a world job → spend **1 RF** → bank **5 xRF**.
+1. Complete a world job → spend **1 RF** → bank **5 × world number** xRF (L1 = 5, L10 = 50, L30 = 150).
 2. When xRF ≥ the next **upgrade** list price P, you may upgrade.
 3. Upgrade costs **0.60 P RF**. The P xRF is consumed and gone.
 4. Want to **promote** (Gen 6→5 etc.)? Pay the official RF in full. xRF does nothing. Remaining xRF stays for the next gen’s upgrades.
-5. Want the next island without finishing this job? Burn **1,000 RF × worlds jumped**. Or stay, complete, and Growth carries you for free.
+5. Want the next island without finishing this job? Burn **1,000 RF × worlds jumped**. Skip does **not** add or remove Growth — Growth only moves from hunts, timer fails (−5), and hide/chase drain.
 
 Pocket math at 5 xRF per hunt and 40% off:
 
@@ -31,7 +31,7 @@ At 30% the save was 10%. At 20% the save was 0%. **40% is the rate that makes op
 | Rule | Value |
 |---|---|
 | Hunt cost | 1 RF per completed job |
-| xRF earned | **5 xRF** per hunt (expected, flat) |
+| xRF earned | **5 × world level** per hunt (L1=5 … L30=150) |
 | xRF redeem for RF | **Never** |
 | Coupon applies to | **Tier upgrades only** (0→1, 1→2, 2→3, 3→4) |
 | Coupon | **Flat 40%** when `xRF ≥ P` |

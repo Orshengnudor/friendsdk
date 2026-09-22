@@ -224,6 +224,15 @@ html, body, #root, #app {
 }
 
 .hunt-task-banner p { margin: 0 0 5px; }
+.hunt-timer {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #000;
+  background: var(--accent);
+  display: inline-block;
+  padding: 4px 10px;
+}
 .hunt-task-banner ol, .hunt-task-banner ul { margin: 0; padding-left: 16px; }
 .hunt-task-banner li { margin: 1px 0; }
 .hunt-task-banner li[data-done] { text-decoration: line-through; opacity: .5; }

@@ -8,6 +8,12 @@
 export const XRF_PER_HUNT = 5;
 export const UPGRADE_DISCOUNT = 0.4;
 export const SKIP_RF_PER_WORLD = 1000;
+export const TIMER_FAIL_GROWTH = 5;
+
+/** xRF from a finished hunt on this world. L1 = 5, L2 = 10, … L30 = 150. */
+export function xrfForHunt(level: number): number {
+  return XRF_PER_HUNT * Math.max(1, Math.min(30, Math.round(level)));
+}
 export const MAX_TIER = 4;
 export const MAX_GEN = 6;
 export const MIN_GEN = 1;

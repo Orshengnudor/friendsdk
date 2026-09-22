@@ -20,7 +20,8 @@ export const L27: HuntLevelDef = {
     
   ],
   npcs: [
-    { role: "boss", preferId: "8", island: 0, corner: "east" }
+    { role: "boss", preferId: "8", island: 0, corner: "east" },
+    { role: "boss", preferId: "7", island: 0, corner: "north" }
   ],
   spawn: { island: 0, corner: "west" },
 };

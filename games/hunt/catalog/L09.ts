@@ -11,7 +11,7 @@ export const L09: HuntLevelDef = {
     title: "Descending cut",
     brief: "Walk High cut, Mid cut, Low cut. A wrong ledge resets the descent.",
     nodeLabels: ["High cut", "Mid cut", "Low cut"],
-    timerMs: 45000,
+    timerMs: 30000,
     failOnWrong: true,
     hint: "none",
     relic: false,

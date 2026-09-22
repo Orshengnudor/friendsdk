@@ -20,7 +20,9 @@ export const L16: HuntLevelDef = {
     
   ],
   npcs: [
-    { role: "patrol", preferId: "8", island: 0, corner: "east" }
+    { role: "patrol", preferId: "8", island: 0, corner: "east" },
+    { role: "patrol", preferId: "1", island: 0, corner: "north" },
+    { role: "patrol", preferId: "16", island: 0, corner: "south" }
   ],
   spawn: { island: 0, corner: "west" },
 };

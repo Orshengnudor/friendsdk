@@ -71,6 +71,7 @@ type Props = {
   reducedMotion?: boolean;
   chaseSlow?: number;
   zoom?: number;
+  resetToken?: number;
   onZoom?: (zoom: number) => void;
   onInteract: (id: string) => void;
   onNpcEvent?: (event: NpcEvent) => void;
@@ -171,6 +172,7 @@ export function HuntWorld({
   reducedMotion = false,
   chaseSlow = 0,
   zoom = 1,
+  resetToken = 0,
   onZoom,
   onInteract,
   onNpcEvent,
@@ -178,8 +180,8 @@ export function HuntWorld({
   const root = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const mover = useRef<ReturnType<typeof createWorldMovement> | null>(null);
-  const live = useRef({ paused, reducedMotion, interactions, onInteract, onNpcEvent, npcs, chaseSlow, world, zoom, onZoom });
-  live.current = { paused, reducedMotion, interactions, onInteract, onNpcEvent, npcs, chaseSlow, world, zoom, onZoom };
+  const live = useRef({ paused, reducedMotion, interactions, onInteract, onNpcEvent, npcs, chaseSlow, world, zoom, onZoom, resetToken });
+  live.current = { paused, reducedMotion, interactions, onInteract, onNpcEvent, npcs, chaseSlow, world, zoom, onZoom, resetToken };
   const [near, setNear] = useState<string | null>(null);
   const [status, setStatus] = useState("Loading world…");
   const [failed, setFailed] = useState(false);
@@ -188,7 +190,7 @@ export function HuntWorld({
 
   const nearest = (point: readonly [number, number]) =>
     live.current.interactions
-      .filter((item) => Math.hypot(point[0] - item.position[0], point[1] - item.position[1]) <= (item.reach ?? 52))
+      .filter((item) => Math.hypot(point[0] - item.position[0], point[1] - item.position[1]) <= (item.reach ?? 110))
       .sort((a, b) => Math.hypot(point[0] - a.position[0], point[1] - a.position[1]) - Math.hypot(point[0] - b.position[0], point[1] - b.position[1]))[0]?.id ?? null;
 
   useEffect(() => { if (paused) mover.current?.stop(); }, [paused]);
@@ -245,10 +247,18 @@ export function HuntWorld({
     mover.current = movement;
     setNear(null); setFailed(false); setStatus("Loading world…");
 
-    const liveNpcs: LiveNpc[] = live.current.npcs.map((spec) => ({
-      spec, x: spec.spawn[0], y: spec.spawn[1], facing: "down", walking: false,
-      hp: spec.hp, lastHit: 0, alert: false, lastSpot: 0, goal: null, side: "right",
-    }));
+    const seedNpcs = (list: LiveNpc[]) => {
+      list.length = 0;
+      for (const spec of live.current.npcs) {
+        list.push({
+          spec, x: spec.spawn[0], y: spec.spawn[1], facing: "down", walking: false,
+          hp: spec.hp, lastHit: 0, alert: false, lastSpot: 0, goal: null, side: "right",
+        });
+      }
+    };
+    const liveNpcs: LiveNpc[] = [];
+    seedNpcs(liveNpcs);
+    let seenReset = live.current.resetToken ?? 0;
 
     let frame = 0, previous = 0, lastNear: string | null = null, shake = 0, lastPressure = false;
     let playerSide: "left" | "right" = "right";
@@ -289,11 +299,16 @@ export function HuntWorld({
 
         const seconds = capped / 1000;
         const slow = 1 - live.current.chaseSlow;
+        if ((live.current.resetToken ?? 0) !== seenReset) {
+          seenReset = live.current.resetToken ?? 0;
+          seedNpcs(liveNpcs);
+        }
         for (const npc of liveNpcs) {
           if (npc.hp <= 0) continue;
           let target: readonly [number, number] = [npc.x, npc.y];
-          if (npc.spec.role === "chaser") target = state.position;
-          else if (npc.spec.role === "boss") {
+          if (npc.spec.role === "chaser") {
+              target = state.position;
+            } else if (npc.spec.role === "boss") {
             const dx = npc.x - state.position[0];
             const dy = npc.y - state.position[1];
             const dist = Math.hypot(dx, dy) || 1;
@@ -311,7 +326,7 @@ export function HuntWorld({
             if (!npc.goal || Math.hypot(npc.x - npc.goal[0], npc.y - npc.goal[1]) < 14) {
               let next = randomWalkable(live.current.world);
               let hops = 0;
-              while (hops < 8 && Math.hypot(next[0] - npc.x, next[1] - npc.y) < 90) {
+              while (hops < 16 && Math.hypot(next[0] - npc.x, next[1] - npc.y) < 160) {
                 next = randomWalkable(live.current.world);
                 hops++;
               }
@@ -326,7 +341,12 @@ export function HuntWorld({
             const home = Math.hypot(npc.x - npc.spec.spawn[0], npc.y - npc.spec.spawn[1]);
             target = home > 70 ? npc.spec.spawn : npc.goal ?? npc.spec.spawn;
           }
-          const moved = stepToward(live.current.world, [npc.x, npc.y], target, npc.spec.speed * (npc.spec.role === "chaser" ? slow : 1), seconds);
+          const chaseSpeed = npc.spec.speed * (npc.spec.role === "chaser" ? Math.max(0.55, slow) : 1);
+          let moved = stepToward(live.current.world, [npc.x, npc.y], target, chaseSpeed, seconds);
+          if (!moved.walking && (npc.spec.role === "chaser" || npc.spec.role === "patrol" || npc.spec.role === "boss")) {
+            const hop = randomWalkable(live.current.world);
+            moved = stepToward(live.current.world, [npc.x, npc.y], hop, chaseSpeed, seconds);
+          }
           npc.x = moved.pos[0]; npc.y = moved.pos[1]; npc.walking = moved.walking; npc.facing = moved.facing;
           if (npc.facing === "left" || npc.facing === "right") npc.side = npc.facing;
           const dist = Math.hypot(npc.x - state.position[0], npc.y - state.position[1]);
@@ -349,7 +369,16 @@ export function HuntWorld({
             npc.lastHit = now;
             npc.hp = Math.max(0, npc.hp - 1);
             shake = npc.hp <= 0 ? 10 : 6;
-            live.current.onNpcEvent?.({ type: npc.hp <= 0 ? "down" : "hit", npcId: npc.spec.id, hp: npc.hp, max: npc.spec.hp });
+            const bosses = liveNpcs.filter((row) => row.spec.role === "boss");
+            const alive = bosses.filter((row) => row.hp > 0).length;
+            const maxHp = bosses.reduce((sum, row) => sum + row.spec.hp, 0);
+            const hp = bosses.reduce((sum, row) => sum + row.hp, 0);
+            live.current.onNpcEvent?.({
+              type: alive === 0 ? "down" : "hit",
+              npcId: npc.spec.id,
+              hp,
+              max: maxHp,
+            });
           }
         }
 
@@ -460,7 +489,10 @@ export function HuntWorld({
         context.restore();
 
         const target = nearest(state.position);
-        if (target !== lastNear) { lastNear = target; setNear(target); }
+        if (target !== lastNear) {
+          lastNear = target;
+          setNear(target);
+        }
         node.dataset.x = state.position[0].toFixed(2);
         node.dataset.y = state.position[1].toFixed(2);
         frame = requestAnimationFrame(render);
@@ -525,12 +557,18 @@ export function HuntWorld({
                 left: `${((x - view.x) / view.w) * 100}%`,
                 top: `${((y + (item.labelOffset ?? 16) - view.y) / view.h) * 100}%`,
               }}
-              disabled={paused || !active}
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={() => onInteract(item.id)}
+              disabled={paused}
+              onPointerDown={(event) => {
+                event.stopPropagation();
+                canvas.current?.focus({ preventScroll: true });
+              }}
+              onClick={() => {
+                canvas.current?.focus({ preventScroll: true });
+                onInteract(item.id);
+              }}
             >
               {item.label}
-              <small>{active ? "E / tap to interact" : "Walk closer"}</small>
+              <small>{active ? "E / tap" : "Tap or walk closer, then E"}</small>
             </button>
           );
         })}

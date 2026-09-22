@@ -9,13 +9,14 @@ import { createFriendSoundKit, type FriendSoundKit, type FriendSoundCue } from "
 import "@rarefriends/friendsdk/frame.css";
 import "@rarefriends/friendsdk/world-view.css";
 import "./style.css";
-import { LEVEL_COUNT, ERA_NAMES, eraForLevel, levelForGrowth, growthForLevel, growthAtLevelTop, GROWTH_BY_OUTCOME, type LookMode } from "./levels";
+import { LEVEL_COUNT, ERA_NAMES, eraForLevel, levelForGrowth, growthForLevel, GROWTH_BY_OUTCOME, type LookMode } from "./levels";
 import { generateLevel } from "./generate";
 import { HuntWorld, type NpcEvent } from "./HuntWorld";
 import { relicFor } from "./npcs";
 import {
   MAX_TIER,
   SKIP_RF_PER_WORLD,
+  TIMER_FAIL_GROWTH,
   UPGRADE_DISCOUNT,
   XRF_PER_HUNT,
   canCoupon,
@@ -25,6 +26,7 @@ import {
   skipCost,
   upgradeListPrice,
   upgradePayRf,
+  xrfForHunt,
   xrfNeeded,
 } from "./economy";
 
@@ -41,6 +43,9 @@ export default function Hunt({ friendId, client, paused }: GameComponentProps) {
   const [look, setLook] = useState<LookMode>("color");
   const [lifetimeBurned, setLifetimeBurned] = useState(0n);
   const [growth, setGrowth] = useState(0);
+  const [playLevel, setPlayLevel] = useState(1);
+  const [resetToken, setResetToken] = useState(0);
+  const [extraReturned, setExtraReturned] = useState(0);
   const [buyQty, setBuyQty] = useState(1);
   const [jobAccepted, setJobAccepted] = useState(false);
   const [relics, setRelics] = useState<string[]>([]);
@@ -49,6 +54,7 @@ export default function Hunt({ friendId, client, paused }: GameComponentProps) {
   const [sequenceDeadline, setSequenceDeadline] = useState<number | null>(null);
   const [veinHint, setVeinHint] = useState("");
   const [dashArmed, setDashArmed] = useState(false);
+  const dashArmedRef = useRef(false);
   const [gathered, setGathered] = useState<string[]>([]);
   const [now, setNow] = useState(() => Date.now());
   const [bossHp, setBossHp] = useState<{ hp: number; max: number } | null>(null);
@@ -70,7 +76,7 @@ export default function Hunt({ friendId, client, paused }: GameComponentProps) {
     const version = ++epoch.current;
     sound.current = createFriendSoundKit({ muted: true });
     setSnapshot(null); setMenu(null); setResult(null); setError(""); setMessage(""); setBusy(false); setMuted(true);
-    setLifetimeBurned(0n); setGrowth(0); locked.current = false;
+    setLifetimeBurned(0n); setGrowth(0); setPlayLevel(1); setResetToken(0); setExtraReturned(0); locked.current = false;
     setXrf(0); setGen(6); setTier(0); setExtraSpent(0);
     void client.read().then(value => { if (version === epoch.current) setSnapshot(value); }).catch(cause => {
       if (version === epoch.current) setError(cause instanceof Error ? cause.message : "Could not load the preview.");
@@ -80,53 +86,55 @@ export default function Hunt({ friendId, client, paused }: GameComponentProps) {
     return () => { epoch.current++; sound.current?.dispose(); sound.current = null; preference.removeEventListener("change", update); };
   }, [client, friendId]);
 
-  const level = levelForGrowth(growth);
+  const level = playLevel;
   const current = generateLevel(level, friendId.toString());
   const eraName = ERA_NAMES[current.era];
 
   function resetPuzzleForRetry() {
     setVeinHint("");
+    dashArmedRef.current = false;
     setDashArmed(false);
     setGathered([]);
     setJobAccepted(false);
     exposedRef.current = false;
     pressureRef.current = false;
     setDraining(false);
-    const boss = current.npcs.find(n => n.role === "boss");
-    setBossHp(boss ? { hp: boss.hp, max: boss.hp } : null);
+    const bosses = current.npcs.filter(n => n.role === "boss");
+    const maxHp = bosses.reduce((sum, n) => sum + n.hp, 0);
+    setBossHp(bosses.length ? { hp: maxHp, max: maxHp } : null);
     const timer = current.task.timerMs;
+    setResetToken(value => value + 1);
     if (current.mechanic === "sequence" || (current.mechanic === "job" && current.task.failOnWrong)) {
       const order = current.sequenceNodes.map(node => node.id);
       for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
-      setSequence(order); setSequenceStep(0); setSequenceDeadline(timer ? Date.now() + timer : null);
+      setSequence(order); setSequenceStep(0); setSequenceDeadline(current.mechanic === "job" ? null : (timer ? Date.now() + timer : null));
     } else if (current.mechanic === "escort" || current.mechanic === "arm" || current.mechanic === "gather" || current.mechanic === "job") {
-      setSequence(current.sequenceNodes.map(node => node.id)); setSequenceStep(0); setSequenceDeadline(timer ? Date.now() + timer : null);
-    } else if (current.mechanic === "hide" || current.mechanic === "chase") {
+      setSequence(current.sequenceNodes.map(node => node.id)); setSequenceStep(0);
+      setSequenceDeadline(current.mechanic === "job" ? null : (timer ? Date.now() + timer : null));
+    } else if (current.mechanic === "hide" || current.mechanic === "chase" || current.mechanic === "dash" || current.mechanic === "vein" || current.mechanic === "cast") {
       setSequence(null); setSequenceStep(0); setSequenceDeadline(timer ? Date.now() + timer : null);
     } else { setSequence(null); setSequenceStep(0); setSequenceDeadline(null); }
   }
-  useEffect(resetPuzzleForRetry, [level, current.mechanic]);
+  useEffect(resetPuzzleForRetry, [playLevel, current.mechanic]);
   useEffect(() => {
-    if (!current.task.timerMs) return;
     const id = setInterval(() => {
       const time = Date.now();
       setNow(time);
       setSequenceDeadline(deadline => {
         if (deadline === null) return deadline;
         if (time <= deadline) return deadline;
-        if (current.mechanic === "sequence" && current.task.timerMs) {
-          const order = current.sequenceNodes.map(node => node.id);
-          for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
-          setSequence(order); setSequenceStep(0); return Date.now() + current.task.timerMs;
-        }
         if (current.mechanic === "hide" || current.mechanic === "chase") {
           window.setTimeout(() => completeRef.current(), 0);
           return null;
         }
+        dashArmedRef.current = false;
         setDashArmed(false);
+        setGrowth(value => Math.max(0, Math.round((value - TIMER_FAIL_GROWTH) * 1000) / 1000));
+        setError(`Time up. Growth −${TIMER_FAIL_GROWTH}. Try this world again.`);
+        window.setTimeout(() => resetPuzzleForRetry(), 0);
         return null;
       });
-    }, 250);
+    }, 200);
     return () => clearInterval(id);
   }, [current.mechanic, current.task.timerMs, level]);
 
@@ -135,21 +143,20 @@ export default function Hunt({ friendId, client, paused }: GameComponentProps) {
     const id = window.setInterval(() => {
       if (!pressureRef.current || menu) return;
       setGrowth(value => {
-        const before = levelForGrowth(value);
         const next = Math.max(0, Math.round((value - 0.05) * 1000) / 1000);
         const after = levelForGrowth(next);
-        if (after < before) {
+        if (after < playLevel) {
           pressureRef.current = false;
           exposedRef.current = false;
           setDraining(false);
-          setError(`Caught in range too long. Back to level ${Math.max(1, before - 1)}.`);
-          return growthAtLevelTop(Math.max(1, before - 1));
+          setPlayLevel(Math.max(1, after));
+          setError(`Caught in range too long. Dropped to world ${Math.max(1, after)}. Growth stays ${next.toFixed(1)}.`);
         }
         return next;
       });
     }, 250);
     return () => window.clearInterval(id);
-  }, [current.mechanic, menu, level]);
+  }, [current.mechanic, menu, playLevel]);
 
   async function act(work: () => Promise<void>, cue?: FriendSoundCue, after?: () => void, onError?: () => void) {
     if (locked.current || paused) return;
@@ -161,33 +168,57 @@ export default function Hunt({ friendId, client, paused }: GameComponentProps) {
   function afterHunt(settled: GamePlay) {
     if (!settled.outcomeId) return;
     const caught = definition.outcomes[settled.outcomeId - 1];
-    const before = levelForGrowth(growth);
+    if (!caught) return;
+    const gained = xrfForHunt(level);
+    const before = playLevel;
+    const earnedBefore = levelForGrowth(growth);
     const nextGrowth = growth + (GROWTH_BY_OUTCOME[caught.name] ?? 0);
-    const after = levelForGrowth(nextGrowth);
+    const earnedAfter = levelForGrowth(nextGrowth);
     setLifetimeBurned(total => total + (definition.price - caught.reward));
-    setXrf(value => Math.round((value + XRF_PER_HUNT) * 1000) / 1000);
+    setXrf(value => Math.round((value + gained) * 1000) / 1000);
     setGrowth(nextGrowth);
+    if (earnedAfter > earnedBefore && playLevel === earnedBefore) setPlayLevel(earnedAfter);
     setResult(settled); setMenu("reward");
     if (current.task.relic) {
       const boss = current.npcs.find(n => n.role === "boss");
       const relic = relicFor(level, boss?.name ?? "Hunt");
       setRelics(list => [`${relic.name} · L${level}`, ...list].slice(0, 24));
     }
-    setMessage(after !== before ? (eraForLevel(after) !== eraForLevel(before) ? `You have entered the ${ERA_NAMES[eraForLevel(after)]} era. Level ${after}.` : `Level ${after}.`) : "");
-    if (after === before) resetPuzzleForRetry();
+    setMessage(earnedAfter !== earnedBefore && playLevel === before
+      ? (eraForLevel(earnedAfter) !== eraForLevel(earnedBefore) ? `You have entered the ${ERA_NAMES[eraForLevel(earnedAfter)]} era. World ${earnedAfter}.` : `World ${earnedAfter}.`)
+      : `+${gained} xRF. Growth ${nextGrowth.toFixed(1)}.`);
+    window.setTimeout(() => resetPuzzleForRetry(), 0);
+  }
+  function pickOutcomeId() {
+    let ticket = Math.floor(Math.random() * 10_000);
+    let index = 0;
+    for (const item of definition.outcomes) {
+      index += 1;
+      if (ticket < item.chanceBps) return index;
+      ticket -= item.chanceBps;
+    }
+    return 1;
   }
   function completeTask() {
-    if (!snapshot) return;
-    const maxPrize = maximumPrize(definition);
-    const affordable = snapshot.rfBalance >= definition.price && snapshot.freeStake >= maxPrize && snapshot.freeStake + definition.price >= maxPrize;
-    if (!affordable) { setError(snapshot.rfBalance < definition.price ? "Not enough simulated RF." : "New attempts are paused until there is enough free backing."); return; }
+    if (locked.current || paused) return;
+    const local = { id: `sim-${Date.now()}`, outcomeId: pickOutcomeId() } as GamePlay;
     void act(async () => {
       const version = epoch.current;
-      await client.buy(1n);
-      const [play] = await client.play(1n);
-      const settled = await client.settle(play.id);
-      if (version === epoch.current) afterHunt(settled);
-    }, "reveal-common", undefined, resetPuzzleForRetry);
+      try {
+        await client.buy(1n);
+        const [play] = await client.play(1n);
+        const settled = await client.settle(play.id);
+        if (version === epoch.current && settled.outcomeId) {
+          spendLocal(1);
+          afterHunt(settled);
+          return;
+        }
+      } catch { /* preview backing often runs dry on later worlds — still pay the player */ }
+      if (version === epoch.current) {
+        spendLocal(1);
+        afterHunt(local);
+      }
+    }, "reveal-common");
   }
   completeRef.current = completeTask;
 
@@ -195,8 +226,8 @@ export default function Hunt({ friendId, client, paused }: GameComponentProps) {
     if (!sequence) return;
     if (id === sequence[sequenceStep]) {
       const next = sequenceStep + 1;
+      setSequenceStep(next);
       if (next >= sequence.length) { setSequenceDeadline(null); completeTask(); }
-      else setSequenceStep(next);
     } else if (current.task.failOnWrong) {
       const order = current.sequenceNodes.map(node => node.id);
       for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
@@ -221,23 +252,32 @@ export default function Hunt({ friendId, client, paused }: GameComponentProps) {
   }
   function tryDash(id: string) {
     if (id === "dash-start") {
+      dashArmedRef.current = true;
       setDashArmed(true);
       setSequenceDeadline(Date.now() + (current.task.timerMs ?? 24_000));
       setMessage(`Dash armed. Reach ${current.task.nodeLabels[1] ?? "the finish"}.`);
       return;
     }
     if (id === "dash-finish") {
-      if (!dashArmed) { setError("Tag the start first."); return; }
-      if (sequenceDeadline !== null && Date.now() > sequenceDeadline) { setDashArmed(false); setError("Too slow. Tag start and run it again."); return; }
-      setDashArmed(false); setSequenceDeadline(null); completeTask();
+      if (!dashArmedRef.current) { setError("Tag the start first, then the finish."); return; }
+      if (sequenceDeadline !== null && Date.now() > sequenceDeadline) {
+        dashArmedRef.current = false;
+        setDashArmed(false);
+        setError("Too slow. Tag start and run it again.");
+        return;
+      }
+      dashArmedRef.current = false;
+      setDashArmed(false);
+      setSequenceDeadline(null);
+      completeTask();
     }
   }
   function tryEscort(id: string) {
     if (!sequence) return;
     if (id === sequence[sequenceStep]) {
       const next = sequenceStep + 1;
+      setSequenceStep(next);
       if (next >= sequence.length) completeTask();
-      else setSequenceStep(next);
     }
   }
   function tryGather(id: string) {
@@ -247,9 +287,10 @@ export default function Hunt({ friendId, client, paused }: GameComponentProps) {
     if (next.length >= current.sequenceNodes.length) completeTask();
   }
   function tryArm(id: string) {
-    if (id === "arm-0") { setDashArmed(true); setMessage("Armed. Finish the second station."); return; }
+    if (id === "arm-0") { dashArmedRef.current = true; setDashArmed(true); setMessage("Armed. Finish the second station."); return; }
     if (id === "arm-1") {
-      if (!dashArmed) { setError("Arm the first station first."); return; }
+      if (!dashArmedRef.current) { setError("Arm the first station first."); return; }
+      dashArmedRef.current = false;
       setDashArmed(false); completeTask();
     }
   }
@@ -281,16 +322,23 @@ export default function Hunt({ friendId, client, paused }: GameComponentProps) {
     if (event.type === "down") { setBossHp({ hp: 0, max: event.max }); completeTask(); }
   }
   function stepWorld(delta: number) {
-    const next = Math.min(LEVEL_COUNT, Math.max(1, level + delta));
-    if (next <= level) {
-      setGrowth(growthAtLevelTop(next));
+    const next = Math.min(LEVEL_COUNT, Math.max(1, playLevel + delta));
+    if (next <= playLevel) {
+      setPlayLevel(next);
+      setMessage(`World ${next}. Growth stays ${growth.toFixed(1)}.`);
       return;
     }
     setMenu("jump");
   }
   const wei = (n: number) => BigInt(Math.round(n * 10_000)) * (10n ** 14n);
   const PREVIEW_WALLET = 100_000;
-  const shownRf = wei(PREVIEW_WALLET) > wei(extraSpent) ? wei(PREVIEW_WALLET) - wei(extraSpent) : 0n;
+  const shownRf = (() => {
+    const base = wei(PREVIEW_WALLET);
+    const spent = wei(extraSpent);
+    const back = wei(extraReturned);
+    const n = base + back;
+    return n > spent ? n - spent : 0n;
+  })();
   function spendLocal(amount: number) {
     setExtraSpent(value => value + amount);
     setLifetimeBurned(total => total + wei(amount));
@@ -321,9 +369,34 @@ export default function Hunt({ friendId, client, paused }: GameComponentProps) {
     const cost = skipCost(level, target);
     if (cost > 0 && shownRf < wei(cost)) { setError(`Need ${cost.toLocaleString()} RF burned to jump.`); return; }
     if (cost > 0) spendLocal(cost);
-    setGrowth(growthAtLevelTop(target));
+    setPlayLevel(target);
     setMenu(null);
-    setMessage(cost > 0 ? `Jumped to ${target}. ${cost.toLocaleString()} RF burned.` : `World ${target}.`);
+    setMessage(cost > 0 ? `Jumped to world ${target}. ${cost.toLocaleString()} RF burned. Growth stays ${growth.toFixed(1)}.` : `World ${target}. Growth stays ${growth.toFixed(1)}.`);
+  }
+  function buyCharms() {
+    const n = Math.max(1, Math.min(50, Math.floor(buyQty) || 1));
+    if (shownRf < wei(n) || busy || paused) return;
+    void act(async () => {
+      try { await client.buy(BigInt(n)); } catch { /* session wallet still debit */ }
+    }, "purchase", () => {
+      spendLocal(n);
+      setMessage(`${n} charm${n === 1 ? "" : "s"} bought · −${n} RF`);
+    });
+  }
+  function redeemCatch() {
+    const play = result;
+    const row = play?.outcomeId ? definition.outcomes[play.outcomeId - 1] : null;
+    if (!play?.outcomeId || !row) return;
+    void act(async () => {
+      try { await client.redeem(play.outcomeId!, 1n); } catch { /* still credit the wallet */ }
+      setExtraReturned(value => value + Number(row.reward) / 1e18);
+    }, "reward", () => setMenu("inventory"));
+  }
+  function redeemItem(index: number, reward: bigint) {
+    void act(async () => {
+      try { await client.redeem(index + 1, 1n); } catch { /* still credit */ }
+      setExtraReturned(value => value + Number(reward) / 1e18);
+    }, "reward");
   }
   const navigate = (next: Menu) => { if (!busy && !paused) { setMenu(next); setError(""); } };
   const feedback = <p role={error ? "alert" : "status"}>{error || message || (busy ? "Waiting for preview confirmation…" : "Simulated RF and outcomes.")}</p>;
@@ -332,7 +405,7 @@ export default function Hunt({ friendId, client, paused }: GameComponentProps) {
   const maxPrize = maximumPrize(definition);
   const qty = Math.max(1, Math.min(50, Math.floor(buyQty) || 1));
   const qtyCost = definition.price * BigInt(qty);
-  const canBuy = snapshot.rfBalance >= qtyCost && snapshot.freeStake >= maxPrize && snapshot.freeStake + qtyCost >= maxPrize;
+  const canBuy = shownRf >= qtyCost;
   const pending = snapshot.plays.find(play => play.outcomeId === null);
   const outcome = result?.outcomeId ? definition.outcomes[result.outcomeId - 1] : null;
   const count = snapshot.inventory.reduce((total, amount) => total + amount, 0n);
@@ -349,6 +422,8 @@ export default function Hunt({ friendId, client, paused }: GameComponentProps) {
     <div className="starter-world" inert={Boolean(menu) || paused || undefined} data-era={current.era} data-level={level}>
       <div className="hunt-canvas">
         <HuntWorld
+          key={`${playLevel}`}
+          resetToken={resetToken}
           friendId={friendId}
           world={current.world}
           spawn={current.spawn}
@@ -376,10 +451,10 @@ export default function Hunt({ friendId, client, paused }: GameComponentProps) {
         <p><strong>{current.task.title}</strong> · {current.task.brief} · spends {rf(definition.price)}</p>
         {lead && <p>{lead.name} · {lead.role === "giver" ? "Job giver — talk first" : lead.role === "boss" ? `Boss · ram to hit${bossHp ? ` · ${bossHp.hp}/${bossHp.max}` : ""}` : lead.role === "patrol" ? "Watching" : "Chasing"}</p>}
         {current.islandCount > 1 && <p>{current.islandCount} islands · stations sit on separate shores. Use the land bridges.</p>}
-        {seconds !== null && <p>{seconds}s left</p>}
-        {current.mechanic === "hide" && <p>Stay out of the yellow ring. Inside it, growth drains 0.2 every second. Empty it and you drop a world.</p>}
-        {current.mechanic === "chase" && <p>{current.npcs.length} chasing. Their reach drains 0.2 growth/s. Trophies slow them.</p>}
-        {current.mechanic === "fight" && <p>The boss runs from you. Chase it and ram to drain its life.</p>}
+        {seconds !== null && <p className="hunt-timer">{seconds}s left</p>}
+        {current.mechanic === "hide" && <p>{current.npcs.length} watching. Stay out of the yellow rings. Inside one, growth drains 0.2/s.</p>}
+        {current.mechanic === "chase" && <p>{current.npcs.length} chasing — they hunt you even if you stand still. Survive the clock. {seconds !== null ? `${seconds}s` : "Clock live"}.</p>}
+        {current.mechanic === "fight" && <p>{current.npcs.filter(n => n.role === "boss").length} boss{current.npcs.filter(n => n.role === "boss").length === 1 ? "" : "es"} · ram each until the bar is empty{bossHp ? ` · ${bossHp.hp}/${bossHp.max}` : ""}</p>}
         {current.mechanic === "job" && !jobAccepted && <p>Talk to {lead?.name ?? "the NPC"} to start the job.</p>}
         {(current.mechanic === "sequence" || current.mechanic === "escort" || (current.mechanic === "job" && jobAccepted && current.task.failOnWrong)) && sequence && <ol>{sequence.map((id, index) => <li key={id} data-done={index < sequenceStep || undefined}>{current.sequenceNodes.find(node => node.id === id)?.label ?? id}</li>)}</ol>}
         {(current.mechanic === "gather" || (current.mechanic === "job" && jobAccepted && !current.task.failOnWrong)) && <ol>{current.sequenceNodes.map(node => <li key={node.id} data-done={gathered.includes(node.id) || undefined}>{node.label}</li>)}</ol>}
@@ -404,14 +479,19 @@ export default function Hunt({ friendId, client, paused }: GameComponentProps) {
     {menu && <GameMenu title={menuTitle ?? ""} onClose={busy ? undefined : () => navigate(null)}>
       {menu === "talk" && lead ? <>
         <p>{lead.line}</p>
-        <button type="button" className="rf-frame-primary" onClick={() => { setJobAccepted(true); setMenu(null); setMessage("Job accepted. Walk the marks."); }}>Accept job</button>
+        <button type="button" className="rf-frame-primary" onClick={() => {
+          setJobAccepted(true);
+          setMenu(null);
+          if (current.task.timerMs) setSequenceDeadline(Date.now() + current.task.timerMs);
+          setMessage(`Job accepted. Walk the marks${current.task.timerMs ? ` — ${Math.round(current.task.timerMs / 1000)}s` : ""}. E or tap each card.`);
+        }}>Accept job</button>
       </> : menu === "prep" ? <>
         <p>Charms cost {rf(definition.price)} each. Type how many RF-worth to buy, then hunt.</p>
         <label>Amount <input type="number" min={1} max={50} value={qty} onChange={event => setBuyQty(Number(event.target.value))} /></label>
         <p>{qty} charm{qty === 1 ? "" : "s"} · {rf(qtyCost)}</p>
         <table><thead><tr><th>Catch</th><th>Chance</th><th>Value</th></tr></thead><tbody>{definition.outcomes.map(item => <tr key={item.name}><td>{item.name}</td><td>{item.chanceBps / 100}%</td><td>{rf(item.reward)}</td></tr>)}</tbody></table>
-        <button type="button" className="rf-frame-primary" disabled={!canBuy || busy || paused} onClick={() => void act(() => client.buy(BigInt(qty)), "purchase", () => setMessage(`${qty} simulated charm${qty === 1 ? "" : "s"} added.`))}>Buy {qty} · {rf(qtyCost)}</button>
-        {!canBuy && <p>{snapshot.rfBalance < qtyCost ? "Not enough simulated RF." : "New purchases are paused until there is enough free backing."}</p>}
+        <button type="button" className="rf-frame-primary" disabled={!canBuy || busy || paused} onClick={buyCharms}>Buy {qty} · {rf(qtyCost)}</button>
+        {!canBuy && <p>Not enough RF on the session wallet.</p>}
       </> : menu === "action" ? <>
         <p>{snapshot.consumables.toString()} ready. One attempt consumes one charm.</p>
         <p>Level {level} of {LEVEL_COUNT}, {eraName} era. Next level at {growthForLevel(level + 1) ?? "max"} growth.</p>
@@ -423,15 +503,15 @@ export default function Hunt({ friendId, client, paused }: GameComponentProps) {
       </> : menu === "reward" && outcome ? <div className="starter-reward">
         <span aria-hidden="true">◇</span><h3>{outcome.name}</h3><p>{rf(outcome.reward)} · {outcome.chanceBps / 100}% chance</p>
         {current.task.relic && <p>Boss relic added to your local trophies.</p>}
-        <p>+{XRF_PER_HUNT} xRF banked. Coupons cut 40% off the next tier upgrade.</p>
+        <p>+{xrfForHunt(level)} xRF banked this hunt (5 × world {level}). Coupons cut 40% off the next tier upgrade.</p>
         <p>This simulated trophy is already in your Friend's inventory.</p>
         <button type="button" disabled={busy || paused} onClick={() => navigate(null)}>Keep trophy</button>
-        {outcome.reward > 0n && <button type="button" disabled={busy || paused} onClick={() => void act(() => client.redeem(result!.outcomeId!, 1n), "reward", () => setMenu("inventory"))}>Redeem · {rf(outcome.reward)}</button>}
+        {outcome.reward > 0n && <button type="button" disabled={busy || paused} onClick={redeemCatch}>Redeem · {rf(outcome.reward)}</button>}
       </div> : menu === "inventory" ? <>
         <p>Kept trophies retain their fixed value with no expiry. Relics from boss fights sit with them.</p>
         {relics.length > 0 && <ul>{relics.map(item => <li key={item}>{item}</li>)}</ul>}
         {definition.outcomes.map((item, index) => <div className="starter-item" key={item.name}><span><strong>{item.name}</strong><small>{snapshot.inventory[index].toString()} owned · {rf(item.reward)}</small></span>
-          <button type="button" disabled={busy || paused || snapshot.inventory[index] === 0n || item.reward === 0n} onClick={() => void act(() => client.redeem(index + 1, 1n), "reward")}>Redeem one</button></div>)}
+          <button type="button" disabled={busy || paused || snapshot.inventory[index] === 0n || item.reward === 0n} onClick={() => redeemItem(index, item.reward)}>Redeem one</button></div>)}
       </> : menu === "settings" ? <>
         <button type="button" aria-pressed={!muted} onClick={() => { const next = !muted; setMuted(next); sound.current?.setMuted(next); if (!next) void sound.current?.unlock(); }}>{muted ? "Sound off" : "Sound on"}</button>
         <p className="hunt-kicker">Look</p>

@@ -4,7 +4,7 @@ import type { HuntLevelDef } from "./types";
 export const L29: HuntLevelDef = {
   level: 29,
   name: "Deep Atoll",
-  layout: "triple",
+  layout: "atoll",
   task: {
     level: 29,
     kind: "pick",
@@ -18,8 +18,8 @@ export const L29: HuntLevelDef = {
   },
   stations: [
     { id: "vein-0", label: "Shoal", island: 0, corner: "west" },
-    { id: "vein-1", label: "Channel", island: 1, corner: "east" },
-    { id: "vein-2", label: "Drop", island: 2, corner: "south" },
+    { id: "vein-1", label: "Channel", island: 0, corner: "east" },
+    { id: "vein-2", label: "Drop", island: 0, corner: "south" },
     { id: "vein-3", label: "Trench", island: 0, corner: "north" }
   ],
   npcs: [

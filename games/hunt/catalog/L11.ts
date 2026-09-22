@@ -11,7 +11,7 @@ export const L11: HuntLevelDef = {
     title: "Tide run",
     brief: "Leave the west buoy and reach the far reed across the bridges.",
     nodeLabels: ["Start buoy", "Far reed"],
-    timerMs: 24000,
+    timerMs: 15000,
     failOnWrong: false,
     hint: "none",
     relic: false,

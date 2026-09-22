@@ -9,11 +9,11 @@ import {
   type HuntNpc,
   type NpcRole,
 } from "./npcs";
-import { cornerOnIsland, connectLandmasses, landmasses, type Point } from "./placement";
+import { cornerOnIsland, connectLandmasses, findWalkable, landmasses, type Point } from "./placement";
 import type { GeneratedLevel, WorldInteraction } from "./types";
 import { composeWorld, worldRng } from "./worlds";
 
-const BUILD = "catalog-v6";
+const BUILD = "catalog-v9";
 const levelCache = new Map<string, GeneratedLevel>();
 
 function makeNpc(
@@ -53,13 +53,14 @@ export function generateLevel(level: number, playerId = "0"): GeneratedLevel {
   const world = connectLandmasses(composed);
   const islandCount = Math.max(1, originalIslands.length);
   const polyAt = (index: number) => originalIslands[Math.max(0, Math.min(originalIslands.length - 1, index))] ?? originalIslands[0]!;
-  const place = (island: number, corner: typeof def.spawn.corner): Point => cornerOnIsland(world, polyAt(island), corner);
+  const place = (island: number, corner: typeof def.spawn.corner): Point =>
+    findWalkable(world, cornerOnIsland(world, polyAt(island), corner), 12);
   const spawn = place(def.spawn.island, def.spawn.corner);
   const stations: WorldInteraction[] = def.stations.map((station) => ({
     id: station.id,
     label: station.label,
     position: place(station.island, station.corner),
-    reach: 52,
+    reach: 120,
     labelOffset: 16,
     island: station.island,
   }));
@@ -81,7 +82,7 @@ export function generateLevel(level: number, playerId = "0"): GeneratedLevel {
     const action = stations.find((item) => item.id === "action") ?? stations[1] ?? prep;
     generated = { level, era, mechanic: "none", task, world, spawn, islandCount, npcs, ...empty, prepInteraction: prep, actionInteraction: action, interactions: [prep, action] };
   } else if (task.kind === "job") {
-    const talk: WorldInteraction = { id: "npc-0", label: `Talk · ${npcs[0]?.name ?? "NPC"}`, position: npcs[0]?.spawn ?? spawn, reach: 52, labelOffset: 16, island: 0 };
+    const talk: WorldInteraction = { id: "npc-0", label: `Talk · ${npcs[0]?.name ?? "NPC"}`, position: npcs[0]?.spawn ?? spawn, reach: 110, labelOffset: 16, island: 0 };
     const sequenceNodes = stations;
     generated = { level, era, mechanic: "job", task, world, spawn, islandCount, npcs, ...empty, sequenceNodes, interactions: [talk] };
   } else if (task.kind === "hide") {
