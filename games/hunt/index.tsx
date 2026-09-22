@@ -224,15 +224,21 @@ export default function Hunt({ friendId, client, paused }: GameComponentProps) {
 
   function tryAdvanceSequence(id: string) {
     if (!sequence) return;
+    const labelOf = (nodeId: string) => current.sequenceNodes.find(node => node.id === nodeId)?.label ?? nodeId;
     if (id === sequence[sequenceStep]) {
       const next = sequenceStep + 1;
       setSequenceStep(next);
+      setError("");
       if (next >= sequence.length) { setSequenceDeadline(null); completeTask(); }
+      else setMessage(`${labelOf(id)} done. Next is ${labelOf(sequence[next])}.`);
     } else if (current.task.failOnWrong) {
       const order = current.sequenceNodes.map(node => node.id);
       for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
       setSequence(order); setSequenceStep(0);
       setSequenceDeadline(current.task.timerMs ? Date.now() + current.task.timerMs : null);
+      setError("Wrong mark. The order reset.");
+    } else {
+      setError(`Not yet. Next is ${labelOf(sequence[sequenceStep])}.`);
     }
   }
   function tryVein(id: string) {
@@ -456,8 +462,8 @@ export default function Hunt({ friendId, client, paused }: GameComponentProps) {
         {current.mechanic === "chase" && <p>{current.npcs.length} chasing — they hunt you even if you stand still. Survive the clock. {seconds !== null ? `${seconds}s` : "Clock live"}.</p>}
         {current.mechanic === "fight" && <p>{current.npcs.filter(n => n.role === "boss").length} boss{current.npcs.filter(n => n.role === "boss").length === 1 ? "" : "es"} · ram each until the bar is empty{bossHp ? ` · ${bossHp.hp}/${bossHp.max}` : ""}</p>}
         {current.mechanic === "job" && !jobAccepted && <p>Talk to {lead?.name ?? "the NPC"} to start the job.</p>}
-        {(current.mechanic === "sequence" || current.mechanic === "escort" || (current.mechanic === "job" && jobAccepted && current.task.failOnWrong)) && sequence && <ol>{sequence.map((id, index) => <li key={id} data-done={index < sequenceStep || undefined}>{current.sequenceNodes.find(node => node.id === id)?.label ?? id}</li>)}</ol>}
-        {(current.mechanic === "gather" || (current.mechanic === "job" && jobAccepted && !current.task.failOnWrong)) && <ol>{current.sequenceNodes.map(node => <li key={node.id} data-done={gathered.includes(node.id) || undefined}>{node.label}</li>)}</ol>}
+        {(current.mechanic === "sequence" || current.mechanic === "escort" || (current.mechanic === "job" && jobAccepted && current.sequenceNodes.some(node => node.id.startsWith("seq-")))) && sequence && <ol>{sequence.map((id, index) => <li key={id} data-done={index < sequenceStep || undefined}>{current.sequenceNodes.find(node => node.id === id)?.label ?? id}</li>)}</ol>}
+        {(current.mechanic === "gather" || (current.mechanic === "job" && jobAccepted && !current.sequenceNodes.some(node => node.id.startsWith("seq-")))) && <ol>{current.sequenceNodes.map(node => <li key={node.id} data-done={gathered.includes(node.id) || undefined}>{node.label}</li>)}</ol>}
         {current.mechanic === "dash" && <p>{dashArmed ? "Run to the finish." : "Tag the start first."}</p>}
         {current.mechanic === "arm" && <p>{dashArmed ? "Second station is live." : "Arm the first station."}</p>}
         {veinHint && <p>{veinHint}</p>}
