@@ -320,3 +320,17 @@ html, body, #root, #app {
   .hunt-preview-dock { right: 8px; bottom: 8px; flex-direction: row; width: auto; }
   .hunt-preview-dock button { min-width: 44px; width: auto; }
 }
+
+.hunt-pad { display: none; }
+@media (pointer: coarse), (max-width: 800px) {
+  .hunt-pad { display: block; position: absolute; z-index: 8; left: 8px; bottom: 8px; width: 156px; height: 156px; pointer-events: none; }
+  .hunt-pad-key { pointer-events: auto; position: absolute; width: 52px; height: 52px; border-radius: 50%; border: 1px solid #111; background: #eee; color: #111; font: 700 16px/1 ui-monospace, monospace; touch-action: none; user-select: none; }
+  .hunt-pad-up { left: 52px; top: 0; }
+  .hunt-pad-left { left: 0; top: 52px; }
+  .hunt-pad-down { left: 52px; top: 104px; }
+  .hunt-pad-right { left: 104px; top: 52px; }
+  .hunt-pad-use { left: 104px; top: 0; background: #111; color: #eee; }
+  .starter-hint { display: none; }
+  .hunt-help-dock { left: 168px; right: 8px; bottom: 8px; max-width: none; }
+  .hunt-preview-dock { left: auto; right: 8px; bottom: auto; top: 8px; }
+}

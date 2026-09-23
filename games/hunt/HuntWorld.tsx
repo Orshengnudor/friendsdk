@@ -573,6 +573,20 @@ export function HuntWorld({
           );
         })}
       </div>
+      <div className="hunt-pad" aria-label="Move">
+        {([["w", "▲", "up"], ["a", "◀", "left"], ["s", "▼", "down"], ["d", "▶", "right"]] as const).map(([key, glyph, place]) => (
+          <button key={key} type="button" className={`hunt-pad-key hunt-pad-${place}`} aria-label={`Move ${place}`}
+            onPointerDown={(event) => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); mover.current?.setKey(key, true); }}
+            onPointerUp={() => mover.current?.setKey(key, false)}
+            onPointerCancel={() => mover.current?.setKey(key, false)}
+            onLostPointerCapture={() => mover.current?.setKey(key, false)}
+          >{glyph}</button>
+        ))}
+        <button type="button" className="hunt-pad-key hunt-pad-use" aria-label="Use"
+          onPointerDown={(event) => event.preventDefault()}
+          onClick={() => { const target = mover.current ? nearest(mover.current.state.position) : null; if (target) live.current.onInteract(target); }}
+        >E</button>
+      </div>
       {status && (
         <div className="rf-world-loading" role={failed ? "alert" : "status"}>
           <p>{status}</p>
