@@ -47,6 +47,7 @@ export default function Hunt({ friendId, client, paused }: GameComponentProps) {
   const [resetToken, setResetToken] = useState(0);
   const [extraReturned, setExtraReturned] = useState(0);
   const [buyQty, setBuyQty] = useState(1);
+  const [hudOpen, setHudOpen] = useState(false);
   const [jobAccepted, setJobAccepted] = useState(false);
   const [relics, setRelics] = useState<string[]>([]);
   const [sequence, setSequence] = useState<string[] | null>(null);
@@ -445,13 +446,16 @@ export default function Hunt({ friendId, client, paused }: GameComponentProps) {
           onNpcEvent={onNpcEvent}
         />
       </div>
-      <div className="starter-hud">
-        <span>{current.world.name} · {eraName} {level}/{LEVEL_COUNT} · {rf(shownRf)}</span>
-        <span className="hunt-burned" title="Simulated, local statistic">Lifetime burned · {rf(lifetimeBurned)}</span>
+      <div className="starter-hud" data-open={hudOpen || undefined}>
+        <button type="button" className="hunt-menu-btn" aria-label="More stats" aria-expanded={hudOpen} onClick={() => setHudOpen(value => !value)}>☰</button>
+        <span className="hunt-mobile-only">{level}/{LEVEL_COUNT}</span>
+        <span className="hunt-desktop-summary">{current.world.name} · {eraName} {level}/{LEVEL_COUNT} · {rf(shownRf)}</span>
+        <span className="hunt-burned hunt-hud-fold" title="Simulated, local statistic">Lifetime burned · {rf(lifetimeBurned)}</span>
         <span className="hunt-growth" data-drain={draining || undefined}>Growth · {growth.toFixed(1)}</span>
-        <button type="button" onClick={() => navigate("ladder")}>{genLabel(gen, tier)}</button>
+        <button type="button" className="hunt-hud-fold" onClick={() => navigate("ladder")}>{genLabel(gen, tier)}</button>
         <button type="button" onClick={() => navigate("ladder")}>{formatRfAmount(xrf)} xRF</button>
-        <button type="button" onClick={() => navigate("inventory")}>Inventory · {count.toString()}</button>
+        <button type="button" className="hunt-hud-fold" onClick={() => navigate("inventory")}>Inventory · {count.toString()}</button>
+        <button type="button" className="hunt-mobile-only hunt-hud-fold" disabled={level <= 1} onClick={() => stepWorld(-1)}>Prev world</button>
       </div>
       <div className="hunt-task-banner" role="status">
         <p><strong>{current.task.title}</strong> · {current.task.brief} · spends {rf(definition.price)}</p>

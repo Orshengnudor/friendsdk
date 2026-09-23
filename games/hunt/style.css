@@ -308,29 +308,115 @@ html, body, #root, #app {
   transform: translate(-50%, 0);
 }
 
+.hunt-menu-btn,
+.hunt-mobile-only { display: none; }
+
 @media (max-width: 640px) {
-  .starter-hud { inset: 6px 6px auto; gap: 4px; font-size: 10px; }
-  .starter-hud button { padding: 7px 9px; min-height: 40px; }
+  .starter-hud button { padding: 7px 9px; min-height: 36px; }
   .starter-hud span { padding: 6px; }
-  .starter-hint { bottom: auto; left: auto; right: auto; max-width: 100%; font-size: 10px; }
-  .hunt-help-dock { left: 8px; bottom: 56px; max-width: calc(100% - 16px); }
   .starter-mobile-hint { display: inline; }
   .starter-desktop-hint { display: none; }
-  .hunt-task-banner { top: auto; bottom: 156px; right: 8px; left: 8px; width: auto; }
-  .hunt-preview-dock { right: 8px; bottom: 8px; flex-direction: row; width: auto; }
-  .hunt-preview-dock button { min-width: 44px; width: auto; }
 }
 
 .hunt-pad { display: none; }
+
 @media (pointer: coarse), (max-width: 800px) {
-  .hunt-pad { display: block; position: absolute; z-index: 8; left: 8px; bottom: 8px; width: 156px; height: 156px; pointer-events: none; }
-  .hunt-pad-key { pointer-events: auto; position: absolute; width: 52px; height: 52px; border-radius: 50%; border: 1px solid #111; background: #eee; color: #111; font: 700 16px/1 ui-monospace, monospace; touch-action: none; user-select: none; }
-  .hunt-pad-up { left: 52px; top: 0; }
-  .hunt-pad-left { left: 0; top: 52px; }
-  .hunt-pad-down { left: 52px; top: 104px; }
-  .hunt-pad-right { left: 104px; top: 52px; }
-  .hunt-pad-use { left: 104px; top: 0; background: #111; color: #eee; }
+  .hunt-menu-btn,
+  .hunt-mobile-only { display: inline-flex; }
+  .hunt-desktop-summary,
+  .hunt-hud-fold { display: none; }
+  .starter-hud {
+    top: 8px;
+    left: 8px;
+    right: auto;
+    width: auto;
+    max-width: calc(100% - 132px);
+    gap: 4px;
+    align-items: flex-start;
+    z-index: 9;
+  }
+  .hunt-menu-btn {
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+  .starter-hud[data-open] {
+    flex-direction: column;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 6px;
+    width: min(230px, calc(100% - 120px));
+  }
+  .starter-hud[data-open] .hunt-desktop-summary,
+  .starter-hud[data-open] .hunt-hud-fold { display: flex; width: 100%; }
+  .hunt-task-banner {
+    top: 54px;
+    left: 8px;
+    right: auto;
+    bottom: auto;
+    width: min(210px, calc(100% - 168px));
+    max-height: 72px;
+    overflow: auto;
+    font-size: 10px;
+  }
+  .starter-hud[data-open] ~ .hunt-task-banner { visibility: hidden; }
+  .hunt-pad {
+    display: block;
+    position: absolute;
+    z-index: 8;
+    left: auto;
+    right: 8px;
+    bottom: 58px;
+    width: 148px;
+    height: 148px;
+    pointer-events: none;
+  }
+  .hunt-pad-key {
+    pointer-events: auto;
+    position: absolute;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 1px solid #111;
+    background: #eee;
+    color: #111;
+    font: 700 16px/1 ui-monospace, monospace;
+    touch-action: none;
+    user-select: none;
+  }
+  .hunt-pad-up { left: 50px; top: 0; }
+  .hunt-pad-left { left: 0; top: 50px; }
+  .hunt-pad-down { left: 50px; top: 100px; }
+  .hunt-pad-right { left: 100px; top: 50px; }
+  .hunt-pad-use {
+    position: fixed;
+    left: 8px;
+    top: auto;
+    right: auto;
+    bottom: 138px;
+    background: #111;
+    color: #eee;
+  }
   .starter-hint { display: none; }
-  .hunt-help-dock { left: 168px; right: 8px; bottom: 8px; max-width: none; }
-  .hunt-preview-dock { left: auto; right: 8px; bottom: auto; top: 8px; }
+  .hunt-help-dock {
+    left: 8px;
+    right: auto;
+    bottom: 52px;
+    max-width: 132px;
+    align-items: flex-start;
+  }
+  .hunt-preview-dock {
+    top: 8px;
+    right: 8px;
+    bottom: auto;
+    left: auto;
+    width: auto;
+    flex-direction: column;
+  }
+  .hunt-preview-dock button:first-child { display: none; }
+  .hunt-preview-dock button { min-height: 36px; min-width: 0; font-size: 10px; padding: 6px 8px; }
 }
