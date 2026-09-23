@@ -72,6 +72,7 @@ type Props = {
   chaseSlow?: number;
   zoom?: number;
   resetToken?: number;
+  control?: "stick" | "pad";
   onZoom?: (zoom: number) => void;
   onInteract: (id: string) => void;
   onNpcEvent?: (event: NpcEvent) => void;
@@ -173,6 +174,7 @@ export function HuntWorld({
   chaseSlow = 0,
   zoom = 1,
   resetToken = 0,
+  control = "stick",
   onZoom,
   onInteract,
   onNpcEvent,
