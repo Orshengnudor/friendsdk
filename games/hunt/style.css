@@ -424,3 +424,11 @@ html, body, #root, #app {
   }
   .hunt-preview-dock { display: none; }
 }
+
+.hunt-jump-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: min(420px, 62vh);
+  overflow: auto;
+}

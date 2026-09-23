@@ -567,11 +567,13 @@ export default function Hunt({ friendId, client, paused }: GameComponentProps) {
         })()}
       </> : menu === "jump" ? <>
         <p>Stay and finish the job to move with Growth for free. Jumping ahead burns {SKIP_RF_PER_WORLD.toLocaleString()} RF per world.</p>
-        {Array.from({ length: Math.min(8, LEVEL_COUNT - level) }, (_, i) => {
+        <div className="hunt-jump-list">
+        {Array.from({ length: LEVEL_COUNT - level }, (_, i) => {
           const n = level + i + 1;
           const cost = skipCost(level, n);
           return <button key={n} type="button" disabled={shownRf < wei(cost)} onClick={() => jumpTo(n)}>World {n} · burn {cost.toLocaleString()} RF</button>;
         })}
+        </div>
       </> : null}{feedback}
     </GameMenu>}
   </section>;
