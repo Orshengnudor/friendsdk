@@ -456,6 +456,7 @@ export default function Hunt({ friendId, client, paused }: GameComponentProps) {
         <button type="button" onClick={() => navigate("ladder")}>{formatRfAmount(xrf)} xRF</button>
         <button type="button" className="hunt-hud-fold" onClick={() => navigate("inventory")}>Inventory · {count.toString()}</button>
         <button type="button" className="hunt-mobile-only hunt-hud-fold" disabled={level <= 1} onClick={() => stepWorld(-1)}>Prev world</button>
+        <button type="button" className="hunt-mobile-only hunt-hud-fold" disabled={level >= LEVEL_COUNT} onClick={() => stepWorld(1)}>Next world · {SKIP_RF_PER_WORLD.toLocaleString()} RF</button>
       </div>
       <div className="hunt-task-banner" role="status">
         <p><strong>{current.task.title}</strong> · {current.task.brief} · spends {rf(definition.price)}</p>
@@ -532,9 +533,11 @@ export default function Hunt({ friendId, client, paused }: GameComponentProps) {
         </div>
         <p>Color paints the land with the GAME_PALETTE. Ink is the official black/white cut. Night tints the same world.</p>
         <label><input type="checkbox" checked={reducedMotion} onChange={event => setReducedMotion(event.target.checked)} /> Reduce motion</label>
+        <h3>Why you play</h3>
+        <p>A clear spends 1 RF and banks 5 × the world number in xRF. World 1 pays 5. World 30 pays 150. When your xRF covers the next tier’s list price, that upgrade is 40% off and the xRF is destroyed. Promotion is always full price. xRF never turns back into RF. Finish the job and Growth moves you for free. Skipping a world burns 1,000 RF for each world you jump.</p>
         <h3>How to play</h3>
         <ol className="hunt-how">
-          <li>WASD or tap the land. The world stays still — you walk on it.</li>
+          <li>On a phone, hold the stick on the right and drag it any direction. E is the black button on the left.</li>\n          <li>On a computer, WASD or the arrows walk. The world stays still.</li>
           <li>Walk onto a station until it turns green, then press E (or tap the card).</li>
           <li>Zoom with − / + or the mouse wheel until the land feels right.</li>
           <li>Each finished hunt spends 1 RF and banks {XRF_PER_HUNT} xRF.</li>

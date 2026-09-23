@@ -318,7 +318,7 @@ html, body, #root, #app {
   .starter-desktop-hint { display: none; }
 }
 
-.hunt-pad { display: none; }
+.hunt-pad, .hunt-stick, .hunt-pad-use { display: none; }
 
 @media (pointer: coarse), (max-width: 800px) {
   .hunt-menu-btn,
@@ -330,11 +330,14 @@ html, body, #root, #app {
     left: 8px;
     right: auto;
     width: auto;
-    max-width: calc(100% - 132px);
+    max-width: calc(100% - 16px);
     gap: 4px;
-    align-items: flex-start;
+    flex-wrap: nowrap;
+    align-items: center;
     z-index: 9;
   }
+  .starter-hud > span,
+  .starter-hud > button { white-space: nowrap; }
   .hunt-menu-btn {
     width: 40px;
     height: 40px;
@@ -346,38 +349,52 @@ html, body, #root, #app {
   }
   .starter-hud[data-open] {
     flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
     background: var(--panel);
     border: 1px solid var(--border);
     padding: 6px;
-    width: min(230px, calc(100% - 120px));
+    width: min(230px, calc(100% - 16px));
   }
   .starter-hud[data-open] .hunt-desktop-summary,
   .starter-hud[data-open] .hunt-hud-fold { display: flex; width: 100%; }
   .hunt-task-banner {
-    top: 54px;
+    top: 56px;
     left: 8px;
     right: auto;
     bottom: auto;
-    width: min(210px, calc(100% - 168px));
+    width: min(220px, calc(100% - 24px));
     max-height: 72px;
     overflow: auto;
     font-size: 10px;
   }
   .starter-hud[data-open] ~ .hunt-task-banner { visibility: hidden; }
-  .hunt-pad {
-    display: block;
+  .hunt-stick,
+  .hunt-pad-use { display: block; }
+  .hunt-stick {
     position: absolute;
     z-index: 8;
-    left: auto;
-    right: 8px;
-    bottom: 58px;
-    width: 148px;
-    height: 148px;
+    right: 14px;
+    bottom: 64px;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    border: 2px solid #111;
+    background: #ffffffd0;
+    touch-action: none;
+  }
+  .hunt-stick-knob {
+    position: absolute;
+    left: 36px;
+    top: 36px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #111;
     pointer-events: none;
   }
   .hunt-pad-key {
     pointer-events: auto;
-    position: absolute;
     width: 48px;
     height: 48px;
     border-radius: 50%;
@@ -388,10 +405,6 @@ html, body, #root, #app {
     touch-action: none;
     user-select: none;
   }
-  .hunt-pad-up { left: 50px; top: 0; }
-  .hunt-pad-left { left: 0; top: 50px; }
-  .hunt-pad-down { left: 50px; top: 100px; }
-  .hunt-pad-right { left: 100px; top: 50px; }
   .hunt-pad-use {
     position: fixed;
     left: 8px;
@@ -409,14 +422,5 @@ html, body, #root, #app {
     max-width: 132px;
     align-items: flex-start;
   }
-  .hunt-preview-dock {
-    top: 8px;
-    right: 8px;
-    bottom: auto;
-    left: auto;
-    width: auto;
-    flex-direction: column;
-  }
-  .hunt-preview-dock button:first-child { display: none; }
-  .hunt-preview-dock button { min-height: 36px; min-width: 0; font-size: 10px; padding: 6px 8px; }
+  .hunt-preview-dock { display: none; }
 }

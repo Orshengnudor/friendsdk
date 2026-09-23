@@ -187,6 +187,35 @@ export function HuntWorld({
   const [failed, setFailed] = useState(false);
   const [revision, setRevision] = useState(0);
   const view = viewFor(zoom);
+  const stickRef = useRef<HTMLDivElement>(null);
+  const [knob, setKnob] = useState({ x: 0, y: 0 });
+  const aimStick = (clientX: number, clientY: number) => {
+    const node = stickRef.current;
+    if (!node || !mover.current) return;
+    const rect = node.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    let dx = clientX - cx;
+    let dy = clientY - cy;
+    const max = rect.width * 0.32;
+    const dist = Math.hypot(dx, dy) || 1;
+    const clamped = Math.min(dist, max);
+    dx = (dx / dist) * clamped;
+    dy = (dy / dist) * clamped;
+    setKnob({ x: dx, y: dy });
+    const dead = 12;
+    mover.current.setKey("w", dy < -dead);
+    mover.current.setKey("s", dy > dead);
+    mover.current.setKey("a", dx < -dead);
+    mover.current.setKey("d", dx > dead);
+  };
+  const releaseStick = () => {
+    setKnob({ x: 0, y: 0 });
+    mover.current?.setKey("w", false);
+    mover.current?.setKey("a", false);
+    mover.current?.setKey("s", false);
+    mover.current?.setKey("d", false);
+  };
 
   const nearest = (point: readonly [number, number]) =>
     live.current.interactions
@@ -573,20 +602,35 @@ export function HuntWorld({
           );
         })}
       </div>
-      <div className="hunt-pad" aria-label="Move">
-        {([["w", "▲", "up"], ["a", "◀", "left"], ["s", "▼", "down"], ["d", "▶", "right"]] as const).map(([key, glyph, place]) => (
-          <button key={key} type="button" className={`hunt-pad-key hunt-pad-${place}`} aria-label={`Move ${place}`}
-            onPointerDown={(event) => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); mover.current?.setKey(key, true); }}
-            onPointerUp={() => mover.current?.setKey(key, false)}
-            onPointerCancel={() => mover.current?.setKey(key, false)}
-            onLostPointerCapture={() => mover.current?.setKey(key, false)}
-          >{glyph}</button>
-        ))}
-        <button type="button" className="hunt-pad-key hunt-pad-use" aria-label="Use"
-          onPointerDown={(event) => event.preventDefault()}
-          onClick={() => { const target = mover.current ? nearest(mover.current.state.position) : null; if (target) live.current.onInteract(target); }}
-        >E</button>
+      <div
+        className="hunt-stick"
+        ref={stickRef}
+        aria-label="Move stick. Hold and drag."
+        onPointerDown={(event) => {
+          event.preventDefault();
+          event.currentTarget.setPointerCapture(event.pointerId);
+          aimStick(event.clientX, event.clientY);
+        }}
+        onPointerMove={(event) => {
+          if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
+          aimStick(event.clientX, event.clientY);
+        }}
+        onPointerUp={releaseStick}
+        onPointerCancel={releaseStick}
+        onLostPointerCapture={releaseStick}
+      >
+        <span className="hunt-stick-knob" style={{ transform: `translate(${knob.x}px, ${knob.y}px)` }} />
       </div>
+      <button
+        type="button"
+        className="hunt-pad-key hunt-pad-use"
+        aria-label="Use"
+        onPointerDown={(event) => event.preventDefault()}
+        onClick={() => {
+          const target = mover.current ? nearest(mover.current.state.position) : null;
+          if (target) live.current.onInteract(target);
+        }}
+      >E</button>
       {status && (
         <div className="rf-world-loading" role={failed ? "alert" : "status"}>
           <p>{status}</p>
