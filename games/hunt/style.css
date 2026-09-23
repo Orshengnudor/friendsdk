@@ -506,3 +506,9 @@ html, body, #root, #app {
     z-index: 40 !important;
   }
 }
+
+@media (pointer: coarse), (max-width: 800px) {
+  .starter-world[inert] .hunt-stick,
+  .starter-world[inert] .hunt-pad,
+  .starter-world[inert] .hunt-pad-use { display: none !important; }
+}

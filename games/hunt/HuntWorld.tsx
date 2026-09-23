@@ -630,6 +630,24 @@ export function HuntWorld({
       >
         <span className="hunt-stick-knob" style={{ transform: `translate(${knob.x}px, ${knob.y}px)` }} />
       </div>
+      <div className="hunt-pad" aria-label="Move arrows">
+        {([["w", "▲", "up"], ["a", "◀", "left"], ["s", "▼", "down"], ["d", "▶", "right"]] as const).map(([key, glyph, place]) => (
+          <button
+            key={key}
+            type="button"
+            className={`hunt-pad-key hunt-pad-${place}`}
+            aria-label={`Move ${place}`}
+            onPointerDown={(event) => {
+              event.preventDefault();
+              event.currentTarget.setPointerCapture(event.pointerId);
+              mover.current?.setKey(key, true);
+            }}
+            onPointerUp={() => mover.current?.setKey(key, false)}
+            onPointerCancel={() => mover.current?.setKey(key, false)}
+            onLostPointerCapture={() => mover.current?.setKey(key, false)}
+          >{glyph}</button>
+        ))}
+      </div>
       <button
         type="button"
         className="hunt-pad-key hunt-pad-use"
