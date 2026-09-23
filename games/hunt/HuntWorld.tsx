@@ -216,6 +216,13 @@ export function HuntWorld({
     mover.current?.setKey("s", false);
     mover.current?.setKey("d", false);
   };
+  useEffect(() => {
+    setKnob({ x: 0, y: 0 });
+    mover.current?.setKey("w", false);
+    mover.current?.setKey("a", false);
+    mover.current?.setKey("s", false);
+    mover.current?.setKey("d", false);
+  }, [control]);
 
   const nearest = (point: readonly [number, number]) =>
     live.current.interactions
@@ -542,7 +549,7 @@ export function HuntWorld({
   }, [friendId, world, spawn, revision, lookMode]);
 
   return (
-    <div ref={root} className={`rf-world-view hunt-world${lookMode === "night" ? " hunt-world-night" : ""}`}>
+    <div ref={root} className={`rf-world-view hunt-world${lookMode === "night" ? " hunt-world-night" : ""}`} data-control={control}>
       <div
         className="rf-world-surface hunt-land-frame"
         onPointerDown={(event) => {

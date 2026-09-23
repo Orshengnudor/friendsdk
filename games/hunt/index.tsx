@@ -48,6 +48,7 @@ export default function Hunt({ friendId, client, paused }: GameComponentProps) {
   const [extraReturned, setExtraReturned] = useState(0);
   const [buyQty, setBuyQty] = useState(1);
   const [hudOpen, setHudOpen] = useState(false);
+  const [control, setControl] = useState<"stick" | "pad">("stick");
   const [jobAccepted, setJobAccepted] = useState(false);
   const [relics, setRelics] = useState<string[]>([]);
   const [sequence, setSequence] = useState<string[] | null>(null);
@@ -444,6 +445,7 @@ export default function Hunt({ friendId, client, paused }: GameComponentProps) {
           onZoom={setZoom}
           onInteract={onInteract}
           onNpcEvent={onNpcEvent}
+          control={control}
         />
       </div>
       <div className="starter-hud" data-open={hudOpen || undefined}>
@@ -525,6 +527,11 @@ export default function Hunt({ friendId, client, paused }: GameComponentProps) {
           <button type="button" disabled={busy || paused || snapshot.inventory[index] === 0n || item.reward === 0n} onClick={() => redeemItem(index, item.reward)}>Redeem one</button></div>)}
       </> : menu === "settings" ? <>
         <button type="button" aria-pressed={!muted} onClick={() => { const next = !muted; setMuted(next); sound.current?.setMuted(next); if (!next) void sound.current?.unlock(); }}>{muted ? "Sound off" : "Sound on"}</button>
+        <p className="hunt-kicker">Phone controls</p>
+        <div className="hunt-look-row">
+          <button type="button" aria-pressed={control === "stick"} onClick={() => setControl("stick")}>Stick</button>
+          <button type="button" aria-pressed={control === "pad"} onClick={() => setControl("pad")}>Arrows</button>
+        </div>
         <p className="hunt-kicker">Look</p>
         <div className="hunt-look-row">
           {LOOKS.map(mode => (
